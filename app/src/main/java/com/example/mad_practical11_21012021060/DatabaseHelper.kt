@@ -1,9 +1,12 @@
 package com.example.mad_practical11_21012021060
 
-
+import android.annotation.SuppressLint
+import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import org.json.JSONObject
 
 class DatabaseHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION){
 
@@ -17,18 +20,18 @@ class DatabaseHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NAME,
         private const val COLUMN_PERSON_PHONE_NO = "person_phone_no"
         private const val COLUMN_PERSON_ADDRESS = "person_address"
         private const val COLUMN_PERSON_GPS_LAT = "person_lat"
-        private const val COLUMN_GPS_LONG = "person_long"
+        private const val COLUMN_PERSON_GPS_LONG = "person_long"
     }
 
     override fun onCreate(db: SQLiteDatabase?) {
         val CREATE_TABLE = ("CREATE TABLE " + TABLE_NAME + "("
-                + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_ID + " TEXT PRIMARY KEY,"
                 + COLUMN_PERSON_NAME + " TEXT,"
                 + COLUMN_PERSON_EMAIL_ID + " TEXT,"
                 + COLUMN_PERSON_PHONE_NO + " TEXT,"
                 + COLUMN_PERSON_ADDRESS + " TEXT,"
-                + COLUMN_PERSON_GPS_LAT + " TEXT,"
-                + COLUMN_GPS_LONG + " TEXT)")
+                + COLUMN_PERSON_GPS_LAT + " REAL,"
+                + COLUMN_PERSON_GPS_LONG + " REAL)")
 
         if (db != null) {
             db.execSQL(CREATE_TABLE)
@@ -41,18 +44,74 @@ class DatabaseHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NAME,
         }
     }
 
-//    fun insertPersson(person: Person) : Long
-//    {
-//
-//    }
-//
-//    fun deletePersson(person: Person) : Int
-//    {
-//
-//    }
-//
-//    fun getAllPersons() :ArrayList<Person>
-//    {
-//
-//    }
+    fun insertPerson(person: Person) : Long
+    {
+        val db =writableDatabase
+        val contentValues = ContentValues()
+        contentValues.put(COLUMN_ID,person.Id)
+        contentValues.put(COLUMN_PERSON_NAME,person.Name)
+        contentValues.put(COLUMN_PERSON_EMAIL_ID,person.EmailId)
+        contentValues.put(COLUMN_PERSON_PHONE_NO,person.PhoneNo)
+        contentValues.put(COLUMN_PERSON_ADDRESS,person.Address)
+        contentValues.put(COLUMN_PERSON_GPS_LAT,person.Latitude)
+        contentValues.put(COLUMN_PERSON_GPS_LONG,person.Longitude)
+
+        val count = db.insert(TABLE_NAME, null, contentValues)
+        db.close()
+        return count
+    }
+
+    fun deletePerson(personId: String) : Int
+    {
+        val db = writableDatabase
+        val selection ="$COLUMN_ID = ?"
+        val selectionArgs = arrayOf(personId)
+
+        val count =db.delete(TABLE_NAME,selection,selectionArgs)
+        db.close()
+        return count
+    }
+
+    @SuppressLint("Range")
+    fun getAllPersons() :ArrayList<Person>
+    {
+        val personList = arrayListOf<Person>()
+        val db =readableDatabase
+        var query = "SELECT * FROM $TABLE_NAME"
+        var cursor : Cursor =db.rawQuery(query,null)
+
+        while (cursor.moveToNext())
+        {
+            var id : String = cursor.getString(cursor.getColumnIndex(COLUMN_ID))
+            var name : String = cursor.getString(cursor.getColumnIndex(COLUMN_PERSON_NAME))
+            var email : String = cursor.getString(cursor.getColumnIndex(COLUMN_PERSON_EMAIL_ID))
+            var phone : String = cursor.getString(cursor.getColumnIndex(COLUMN_PERSON_PHONE_NO))
+            var address: String = cursor.getString(cursor.getColumnIndex(COLUMN_PERSON_ADDRESS))
+            var latitude : Double = cursor.getDouble(cursor.getColumnIndex(COLUMN_PERSON_GPS_LAT))
+            var longitude: Double = cursor.getDouble(cursor.getColumnIndex(COLUMN_PERSON_GPS_LONG))
+
+            val jsonObject = JSONObject()
+
+            jsonObject.put("id", id)
+            jsonObject.put("email", email)
+            jsonObject.put("phone", phone)
+
+            val profileJson = JSONObject()
+            profileJson.put("name", name) // You'll need to fill in the actual name value here
+            profileJson.put("address", address)
+
+            val locationJson = JSONObject()
+            locationJson.put("lat", latitude)
+            locationJson.put("long", longitude)
+            profileJson.put("location", locationJson)
+
+            jsonObject.put("profile", profileJson)
+
+            val person = Person(jsonObject)
+            personList.add(person)
+        }
+        cursor.close()
+        db.close()
+        return personList
+    }
 }
